@@ -1,0 +1,122 @@
+
+.console-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-lg);
+  padding: var(--spacing-lg) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.console-header__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  min-width: 0;
+}
+
+.console-header__mark {
+  display: grid;
+  width: 52px;
+  height: 52px;
+  flex-shrink: 0;
+  place-items: center;
+  background: var(--color-primary);
+  color: white;
+  border-radius: 15px 8px 15px 8px;
+  font-size: 19px;
+  font-weight: 800;
+  transform: rotate(-4deg);
+}
+
+.console-header__identity {
+  min-width: 0;
+}
+
+.console-header__eyebrow {
+  margin: 0 0 3px;
+  color: var(--color-text-muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+}
+
+.console-header__title {
+  margin: 0;
+  font-size: 22px;
+  line-height: 1.4;
+}
+
+.console-header__meta {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: var(--spacing-md);
+}
+
+.console-header__status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  color: var(--color-text-muted);
+  font-size: 13px;
+}
+
+.console-header__status-dot {
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+  background: var(--color-success);
+  border-radius: 50%;
+}
+
+.console-header__sticker {
+  padding: 7px 10px;
+  background: var(--color-accent);
+  color: var(--color-text);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  transform: rotate(2deg);
+}
+
+.console-header__language {
+  min-height: 40px;
+  padding: 8px 13px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-weight: 700;
+  transition:
+    background 160ms ease,
+    color 160ms ease;
+}
+
+.console-header__language:hover {
+  background: var(--color-primary);
+  color: white;
+}
+
+@media (max-width: 760px) {
+  .console-header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: var(--spacing-md);
+  }
+
+  .console-header__meta {
+    justify-content: flex-start;
+  }
+
+  .console-header__title {
+    font-size: 19px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .console-header__language {
+    transition: none;
+  }
+}

@@ -1,0 +1,68 @@
+
+:root {
+  /* رنگ اصلی رابط برای عناصر مهم و تعاملی */
+  --color-primary: #3548d4;
+
+  /* رنگ مکمل برای برچسب‌ها و جزئیات گرافیکی */
+  --color-accent: #f1a34a;
+
+  /* پس‌زمینه کلی صفحه با حس کاغذ روشن */
+  --color-background: #f5f0e7;
+
+  /* رنگ پس‌زمینه کارت‌ها */
+  --color-surface: #fffdf8;
+
+  /* رنگ اصلی نوشته‌ها */
+  --color-text: #272622;
+
+  /* رنگ متن‌های کم‌اهمیت‌تر */
+  --color-text-muted: #77736b;
+
+  /* رنگ خطوط و حاشیه‌ها */
+  --color-border: #ded7ca;
+
+  /* رنگ وضعیت موفق */
+  --color-success: #287653;
+
+  /* رنگ وضعیت خطا */
+  --color-danger: #c33e35;
+
+  /* فونت پیش‌فرض رابط کاربری */
+  --font-family-base: Arial, Helvetica, sans-serif;
+
+  /* اندازه متن عادی */
+  --font-size-base: 16px;
+
+  /* اندازه عنوان اصلی */
+  --font-size-heading: 28px;
+
+  /* فاصله کوچک */
+  --spacing-sm: 8px;
+
+  /* فاصله متوسط */
+  --spacing-md: 16px;
+
+  /* فاصله بزرگ */
+  --spacing-lg: 24px;
+
+  /* فاصله بسیار بزرگ */
+  --spacing-xl: 40px;
+
+  /* گردی گوشه عناصر کوچک */
+  --radius-sm: 8px;
+
+  /* گردی گوشه کارت‌ها */
+  --radius-card: 16px;
+
+  /* گردی گوشه کارت اصلی */
+  --radius-feature: 24px;
+
+  /* سایه پیش‌فرض کارت‌ها */
+  --shadow-card: 0 8px 24px rgb(39 38 34 / 8%);
+
+  /* عرض نوار کناری در دسکتاپ */
+  --sidebar-width: 240px;
+
+  /* حداکثر عرض محتوای صفحه */
+  --content-max-width: 1440px;
+}
