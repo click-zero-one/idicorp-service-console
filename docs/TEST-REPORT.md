@@ -257,3 +257,9 @@ The direct browser test of the Text Echo WebSocket failed before connection esta
 This report records observed results rather than asserting that all requirements have been exhaustively tested.
 
 
+
+## Related Issue
+
+The Echo WebSocket connection issue has been reported in the original repository:
+
+- [Issue #8 — WebSocket Echo endpoint fails to establish a connection](https://github.com/mtrshirazi21/idicorp-frontend-challenge/issues/8)
