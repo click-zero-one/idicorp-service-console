@@ -83,6 +83,8 @@ The Echo result is an observed connection failure, not proof of a specific root 
 
 These notes describe tests performed during development and do not mean that every possible scenario has been tested.
 
+The Echo WebSocket connection issue has been reported in the original challenge repository: [Issue #8 — WebSocket Echo endpoint fails to establish a connection](https://github.com/mtrshirazi21/idicorp-frontend-challenge/issues/8).
+
 ## Known Limitations
 
 - The Text Echo WebSocket connection issue remains unresolved.
