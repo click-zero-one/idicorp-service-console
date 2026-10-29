@@ -1,4 +1,4 @@
-const ECHO_WS_URL = "wss://ts.idicorp.ir/ws/echo";
+﻿const ECHO_WS_URL = "wss://ts.idicorp.ir/ws/echo";
 
 export function createEchoSocket({ onOpen, onMessage, onClose, onError }) {
   let socket = null;
@@ -7,32 +7,33 @@ export function createEchoSocket({ onOpen, onMessage, onClose, onError }) {
   const connect = () => {
     intentionallyClosed = false;
 
-    socket = new WebSocket(ECHO_WS_URL);
+    const currentSocket = new WebSocket(ECHO_WS_URL);
+    socket = currentSocket;
 
-    socket.addEventListener("open", () => {
+    currentSocket.addEventListener("open", () => {
+      if (socket !== currentSocket || intentionallyClosed) return;
       onOpen?.();
     });
 
-    socket.addEventListener("message", (event) => {
+    currentSocket.addEventListener("message", (event) => {
+      if (socket !== currentSocket || intentionallyClosed) return;
       onMessage?.(event.data);
     });
 
-    socket.addEventListener("error", () => {
-      // مرورگر جزئیات WebSocket error را در اختیار JS نمی‌گذارد.
-      // جزئیات واقعی معمولاً در Network/Console قابل مشاهده است.
-      if (!intentionallyClosed) {
-        onError?.("اتصال Echo برقرار نشد.");
-      }
+    currentSocket.addEventListener("error", () => {
+      // مرورگر جزئیات کامل خطای WebSocket را در اختیار JavaScript نمی‌گذارد.
+      if (socket !== currentSocket || intentionallyClosed) return;
+      onError?.("اتصال به سرویس Echo برقرار نشد.");
     });
 
-    socket.addEventListener("close", (event) => {
-      if (!intentionallyClosed) {
-        onClose?.({
-          code: event.code,
-          reason: event.reason,
-          wasClean: event.wasClean,
-        });
-      }
+    currentSocket.addEventListener("close", (event) => {
+      if (socket !== currentSocket || intentionallyClosed) return;
+
+      onClose?.({
+        code: event.code,
+        reason: event.reason,
+        wasClean: event.wasClean,
+      });
     });
   };
 
@@ -48,15 +49,19 @@ export function createEchoSocket({ onOpen, onMessage, onClose, onError }) {
       return true;
     },
 
-close() {
-  intentionallyClosed = true;
+    close() {
+      intentionallyClosed = true;
 
-  if (!socket) return;
+      if (
+        socket &&
+        (socket.readyState === WebSocket.CONNECTING ||
+          socket.readyState === WebSocket.OPEN)
+      ) {
+        socket.close();
+      }
 
-  if (socket.readyState === WebSocket.OPEN) {
-    socket.close(1000, "Component unmounted");
-  }
-},
+      socket = null;
+    },
 
     reconnect() {
       if (socket) {

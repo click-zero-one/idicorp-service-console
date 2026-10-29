@@ -6,21 +6,21 @@ import "./EchoPanel.css";
 
 const translations = {
   fa: {
-    eyebrow: "Ø§Ø±ØªØ¨Ø§Ø· Ø²Ù†Ø¯Ù‡",
-    title: "Ø¢Ø²Ù…Ø§ÛŒØ´ Echo",
-    description: "Ù¾ÛŒØ§Ù…Øª Ø±Ø§ Ø§Ø±Ø³Ø§Ù„ Ú©Ù† Ùˆ Ù¾Ø§Ø³Ø® Ø³Ø±ÙˆÛŒØ³ Ø±Ø§ Ø¯Ø±ÛŒØ§ÙØª Ú©Ù†.",
-    connect: "Ø§ØªØµØ§Ù„ Ù…Ø¬Ø¯Ø¯",
-    connected: "Ù…ØªØµÙ„",
-    connecting: "Ø¯Ø± Ø­Ø§Ù„ Ø§ØªØµØ§Ù„",
-    disconnected: "Ù‚Ø·Ø¹ Ø§ØªØµØ§Ù„",
-    closed: "Ø§ØªØµØ§Ù„ Ø¨Ø³ØªÙ‡ Ø´Ø¯",
-    message: "Ù¾ÛŒØ§Ù…",
-    placeholder: "ÛŒÚ© Ù¾ÛŒØ§Ù… Ø¨Ù†ÙˆÛŒØ³...",
-    send: "Ø§Ø±Ø³Ø§Ù„ Ù¾ÛŒØ§Ù…",
-    sent: "Ø§Ø±Ø³Ø§Ù„ Ø´Ø¯",
-    received: "Ø¯Ø±ÛŒØ§ÙØª Ø´Ø¯",
-    empty: "Ù‡Ù†ÙˆØ² Ù¾ÛŒØ§Ù…ÛŒ Ø±Ø¯ÙˆØ¨Ø¯Ù„ Ù†Ø´Ø¯Ù‡ Ø§Ø³Øª.",
-    connectionError: "Ø§ØªØµØ§Ù„ Ø¨Ù‡ Ø³Ø±ÙˆÛŒØ³ Echo Ù†Ø§Ù…ÙˆÙÙ‚ Ø¨ÙˆØ¯.",
+    eyebrow: "ارتباط زنده",
+    title: "آزمایش Echo",
+    description: "پیامت را ارسال کن و پاسخ سرویس را دریافت کن.",
+    connect: "اتصال مجدد",
+    connected: "متصل",
+    connecting: "در حال اتصال",
+    disconnected: "قطع اتصال",
+    closed: "اتصال بسته شد",
+    message: "پیام",
+    placeholder: "یک پیام بنویس...",
+    send: "ارسال پیام",
+    sent: "ارسال شد",
+    received: "دریافت شد",
+    empty: "هنوز پیامی ردوبدل نشده است.",
+    connectionError: "اتصال به سرویس Echo ناموفق بود.",
   },
   en: {
     eyebrow: "LIVE CONNECTION",
@@ -53,32 +53,12 @@ export default function EchoPanel() {
 
 
 function connect() {
-  // Ø§Ú¯Ø± Ø§ØªØµØ§Ù„ Ù‚Ø¨Ù„ÛŒ Ù‡Ù†ÙˆØ² Ø¨Ø±Ù‚Ø±Ø§Ø± Ø§Ø³ØªØŒ Ø¯ÙˆØ¨Ø§Ø±Ù‡ Ø¢Ù† Ø±Ø§ Ù†Ù…ÛŒâ€ŒØ¨Ù†Ø¯ÛŒÙ….
-  if (
-    socketRef.current &&
-    (socketRef.current.readyState === WebSocket.CONNECTING ||
-      socketRef.current.readyState === WebSocket.OPEN)
-  ) {
-    return;
-  }
-
   setError("");
   setStatus("connecting");
 
-  socketRef.current = createEchoSocket({
-    onStatus: setStatus,
-    onError: setError,
-    onMessage: (text) => {
-      setHistory((previous) => [
-        ...previous,
-        {
-          id: `${Date.now()}-${Math.random()}`,
-          direction: "received",
-          text,
-        },
-      ]);
-    },
-  });
+  if (socketRef.current) {
+    socketRef.current.reconnect();
+  }
 }
 
 
@@ -93,44 +73,59 @@ useEffect(() => {
       setError("");
     },
 
-    onMessage: (message) => {
+    onMessage: (rawMessage) => {
       if (!active) return;
 
-      try {
-        const data = JSON.parse(message);
+      let displayText = rawMessage;
 
-        if (data.type === "ready") {
+      try {
+        const data = JSON.parse(rawMessage);
+
+        if (data?.type === "ready") {
           setStatus("connected");
           return;
         }
 
-        setMessages((prev) => [...prev, data]);
+        if (typeof data?.text === "string") {
+          displayText = data.text;
+        }
       } catch {
-        setMessages((prev) => [...prev, message]);
+        // پیام متنی معمولی است.
       }
+
+      setHistory((previous) => [
+        ...previous,
+        {
+          id: `${Date.now()}-${Math.random()}`,
+          direction: "received",
+          text: displayText,
+        },
+      ]);
     },
 
-    onError: (message) => {
+    onError: (errorMessage) => {
       if (!active) return;
 
       setStatus("error");
-      setError(message);
+      setError(errorMessage || t.connectionError);
     },
 
     onClose: (info) => {
       if (!active) return;
 
       setStatus("disconnected");
-
       console.info("Echo socket closed:", info);
     },
   });
 
+  socketRef.current = socket;
+
   return () => {
     active = false;
     socket.close();
+    socketRef.current = null;
   };
-}, []);
+}, [t.connectionError]);
 
   function handleSend(event) {
     event.preventDefault();
@@ -160,6 +155,7 @@ useEffect(() => {
     connecting: t.connecting,
     disconnected: t.disconnected,
     closed: t.closed,
+    error: t.connectionError,
   }[status] || t.connecting;
 
   return (

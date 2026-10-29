@@ -1,265 +1,603 @@
-﻿# Test Report — IDICorp Service Console
+﻿# Test Report â€” IDICorp Service Console
+## Evidence-Based Implementation and Echo WebSocket Investigation
 
+- **Project:** IDICorp Service Console
+- **Report type:** Implementation verification and diagnostic investigation
+- **Primary issue:** Echo WebSocket connection failure
+- **Status:** Echo handshake failure reproduced; root cause not confirmed
+**Repository issue:** [Issue #8 â€” WebSocket Echo endpoint fails to establish a connection](https://github.com/mtrshirazi21/idicorp-frontend-challenge/issues/8)
 
+---
 
-## 1. Purpose
+## 1. Executive Summary
 
+This report documents the implementation checks and diagnostic investigation performed for the IDICorp frontend challenge, with particular emphasis on the Text Echo WebSocket endpoint.
 
+The investigation was extended beyond the React interface to distinguish a frontend-specific failure from a failure occurring during the WebSocket connection handshake.
 
-This document summarizes the implementation checks and service tests performed during development of the IDICorp frontend challenge.
+The key observed results are:
 
+- The Vite production build completed successfully.
+- Oxlint completed without reported lint errors in the previously recorded run, although warnings remained.
+- The documented authentication, task-management, and Calculator readiness scenarios were reported as successfully exercised.
+- A direct browser test of the Echo WebSocket failed before the `open` event and subsequently reported close code `1006`.
+- A direct Node.js WebSocket test against Echo also failed.
+- A raw TLS-based HTTP Upgrade request to `/ws/echo`, without an `Origin` header, received `HTTP/1.1 403 Forbidden` from a response identifying `nginx` as the server.
+- The same raw handshake technique against `/ws/calculator` received `HTTP/1.1 101 Switching Protocols`.
 
+The Echo-versus-Calculator comparison is the strongest diagnostic finding currently available. It demonstrates that the two paths behaved differently under the recorded handshake tests.
 
-It distinguishes observed results from assumptions. A successful test of one endpoint does not establish that every endpoint or scenario works correctly.
+It does **not** identify the exact configuration, access rule, upstream service, or application condition responsible for the Echo rejection. Server-side logs and deployment configuration are not available in the current test record.
 
+The implementation and report therefore distinguish verified observations from hypotheses. No specific root cause is claimed as confirmed.
 
+## 2. Scope and Objectives
 
-## 2. Frontend Build and Static Checks
+The investigation covered:
 
+1. Production build verification.
+2. Static lint checks.
+3. Previously exercised authentication and task-management flows.
+4. Calculator WebSocket connection readiness.
+5. Echo WebSocket connection establishment.
+6. Direct testing outside the React interface.
+7. Comparison of HTTP Upgrade responses from Echo and Calculator.
+8. Documentation of remaining uncertainty and recommended follow-up actions.
 
+The purpose was to continue implementation as requested by the challenge maintainer, investigate the Echo failure further, and prepare a technically defensible final submission.
 
-### Production build
+### Out of scope
 
+The available test record does not establish:
 
+- Access to the production Nginx configuration.
+- Access to Echo or Calculator backend logs.
+- Access to infrastructure or reverse-proxy deployment settings.
+- Exhaustive testing of all API inputs, authorization states, or network environments.
+- Successful end-to-end Echo message exchange.
+- A confirmed root cause for the Echo failure.
 
-**Result: Passed**
+## 3. Environment and Test Methodology
 
+The recorded direct diagnostic tests used Node.js on Windows PowerShell.
 
+Recorded Node.js environment check:
 
-The Vite production build completed successfully.
-
-
+```powershell
+node -e "console.log('Node:', process.version); try { console.log('WebSocket:', typeof WebSocket) } catch (e) { console.log(e.message) }"
+```
 
 Observed output:
 
-- Vite build completed without a reported build error.
+```text
+Node: v26.2.0
+WebSocket: function
+```
 
-- 36 modules transformed.
+This confirms that the runtime provided a built-in WebSocket implementation for direct testing.
 
-- A production `dist` output was generated.
+The investigation used two different testing approaches:
 
+- A WebSocket client test to observe connection events.
+- A raw TLS socket that manually sent an HTTP WebSocket Upgrade request and printed the server's initial HTTP response.
 
+The raw handshake tests used the same hostname, TLS port, and Upgrade headers for both endpoints. Neither raw handshake included an `Origin` header.
 
-### Lint
+This comparison controls for several client-side variables, but it does not guarantee that all server-side conditions were identical. For example, the endpoints may have different routing, authorization, or backend policies.
 
+## 4. Production Build and Static Analysis
 
+### 4.1 Final production build
 
-**Result: Completed with warnings**
+**Result: Passed**
 
+The final production build was rerun after the latest source and lint-script changes.
 
+Recorded output:
 
-Oxlint completed with no reported lint errors and two React warnings related to `set-state-in-effect`:
+vite v8.3.5 building client environment for production...
+36 modules transformed.
+computing gzip size...
+dist/index.html                   0.47 kB â”‚ gzip:  0.30 kB
+dist/assets/index-BOkgafo-.css   22.84 kB â”‚ gzip:  4.42 kB
+dist/assets/index-CIPuzdG_.js   250.49 kB â”‚ gzip: 77.41 kB
+built in 161ms
 
+The build completed without reported build errors. This verifies production compilation, but does not establish that external services or every runtime flow work correctly.
 
+### 4.2 Final lint check
 
-- `src/components/LoginForm/LoginForm.jsx`: CAPTCHA loading effect.
+**Result: Completed with warnings; zero errors**
 
-- `src/components/TaskManager/TaskManager.jsx`: task loading effect.
+The final lint command is configured as:
 
+```powershell
+npm run lint
+```
 
+The `package.json` script invokes Oxlint against the main application source:
 
-These warnings should be reviewed separately. They are not, by themselves, evidence of a runtime failure.
+```json
+"lint": "oxlint src"
+```
 
+The latest recorded run finished with **2 warnings and 0 errors**, scanning 15 files.
 
+The remaining warnings are both `react(set-state-in-effect)` warnings:
 
-## 3. Authentication and Task Management
+- `src/components/LoginForm/LoginForm.jsx`: `loadCaptcha()` is called from a `useEffect`.
+- `src/components/TaskManager/TaskManager.jsx`: `loadTasks()` is called from a `useEffect`.
 
+The previous EchoPanel dependency warning no longer appears in the latest lint output. Backup files are no longer included in this lint run because the lint script targets `src`.
 
+These warnings have not been suppressed. Their impact should be assessed against the actual CAPTCHA and task-loading behavior before making further code changes.
 
-The following behavior was exercised during development:
+The successful build and zero-error lint result do not resolve the external Echo WebSocket failure documented in the following sections.
 
+## 5. Authentication and Task Management
 
+The existing report records the following scenarios as exercised successfully during development:
 
-| Area | Observed result |
-
+| Area | Recorded result |
 |---|---|
-
 | Login and CAPTCHA flow | Tested successfully |
-
 | Task listing | Tested successfully |
-
 | Task search | Tested successfully |
-
 | Completion-status filtering | Tested successfully |
-
 | Task CRUD operations | Tested successfully |
 
+These entries reflect the previously documented development tests. The current report does not include complete request/response logs or exhaustive test cases for these flows.
 
+They should therefore be interpreted as recorded scenario outcomes, not a claim of complete functional or security coverage.
 
-These observations reflect the scenarios exercised during development; they do not imply exhaustive coverage of every input, error response, or session state.
+## 6. Calculator WebSocket
 
-
-
-## 4. Calculator WebSocket
-
-
-
-**Result: Connection readiness confirmed**
-
-
-
-The Calculator WebSocket endpoint was tested using a valid access token. The server returned:
-
-
-
-`{"type":"ready"}`
-
-
-
-This confirms that the connection reached the ready state in that test. It does not, by itself, prove that all arithmetic operations, invalid inputs, timeouts, and reconnect scenarios were exhaustively tested.
-
-
+**Recorded result: Connection readiness confirmed in a prior test**
 
 Endpoint:
 
+```text
+wss://ts.idicorp.ir/ws/calculator
+```
 
+The existing test report records that a connection using a valid access token reached the ready state and received:
 
-`wss://ts.idicorp.ir/ws/calculator`
+```json
+{"type":"ready"}
+```
 
+A separate raw handshake test was later performed without an `Origin` header.
 
+### Raw handshake request
 
-## 5. Text Echo WebSocket
+The following Node.js code was used to send an HTTP Upgrade request over TLS:
 
+```javascript
+const tls = require("node:tls");
+const crypto = require("node:crypto");
 
+const socket = tls.connect(443, "ts.idicorp.ir", () => {
+  const key = crypto.randomBytes(16).toString("base64");
 
-**Result: Failed to establish a connection in the observed browser test**
+  socket.write(
+    "GET /ws/calculator HTTP/1.1\r\n" +
+    "Host: ts.idicorp.ir\r\n" +
+    "Upgrade: websocket\r\n" +
+    "Connection: Upgrade\r\n" +
+    `Sec-WebSocket-Key: ${key}\r\n` +
+    "Sec-WebSocket-Version: 13\r\n\r\n"
+  );
+});
 
+socket.setTimeout(8000);
+socket.on("data", (data) => {
+  console.log(data.toString("utf8"));
+  socket.destroy();
+});
+socket.on("timeout", () => {
+  console.log("TIMEOUT");
+  socket.destroy();
+});
+socket.on("error", (err) => console.log("TLS ERROR:", err.message));
+```
 
+### Observed response
+
+```text
+HTTP/1.1 101 Switching Protocols
+Server: nginx
+Connection: upgrade
+Upgrade: websocket
+Sec-WebSocket-Accept: WyjtuyIiocCMOK3hZA6lSrKIEi0=
+```
+
+Other security-related response headers were also returned.
+
+### Interpretation
+
+`101 Switching Protocols` is the expected HTTP status for a successful WebSocket protocol upgrade. This confirms that the Calculator path accepted this handshake request.
+
+The raw handshake test did not send an authentication token and did not verify Calculator message processing. The separate earlier test with a valid token is the evidence for the recorded ready message.
+
+The raw handshake and authenticated readiness test establish different things and should not be conflated.
+
+## 7. Text Echo WebSocket
+
+**Current diagnostic status: Handshake rejection reproduced; root cause unresolved**
 
 Endpoint:
 
+```text
+wss://ts.idicorp.ir/ws/echo
+```
 
+### 7.1 Expected behavior
 
-`wss://ts.idicorp.ir/ws/echo`
+According to the challenge specification recorded during implementation, a successful Echo connection should send a ready message and then echo text messages on the same connection.
 
+A complete functional test would need to verify:
 
+1. The connection opens.
+2. The server sends its expected ready message.
+3. A client sends a text message.
+4. The server returns the expected echoed message.
+5. Multiple messages can be exchanged on the same connection.
+6. Error and reconnect behavior are handled appropriately.
 
-### Expected behavior
+The current evidence does not establish that these Echo behaviors were reached successfully.
 
+### 7.2 Browser test
 
-
-According to the challenge specification, a successful connection should send a ready message, after which text messages should be echoed on the same connection.
-
-
-
-### Observed behavior
-
-
-
-During a direct browser test outside the React interface:
-
-
+The recorded direct browser test, performed outside the React interface, showed:
 
 - The WebSocket failed before the `open` event.
-
 - The browser subsequently reported close code `1006`.
+- No successful Echo message exchange was performed.
 
-- No successful Echo message exchange could be performed in that test because the connection was not established.
+Close code `1006` is a local abnormal-closure indication. It does not, by itself, identify the underlying reason the connection failed.
 
+This test showed that the failure was not limited to the React component in that environment.
 
+### 7.3 Direct Node.js WebSocket test
 
-The failure was therefore not limited to the React component in that test.
+A direct Node.js WebSocket test against Echo also failed. The recorded result was an error followed by:
 
+```text
+CLOSE: 1006 (no reason) clean:false
+```
 
+The corresponding direct Calculator WebSocket test reached the `open` event.
 
-### Comparison with Calculator
+This independently reproduced the different connection outcomes outside the React interface.
 
+The Node.js WebSocket client's failure event does not expose the full HTTP response in every case. For that reason, the raw handshake tests below were used to obtain the initial HTTP status directly.
 
+## 8. Raw HTTP Upgrade Handshake Investigation
 
-The Calculator WebSocket reached the ready state when tested with a valid access token. The documented Echo flow does not specify the same authentication message.
+### 8.1 Purpose
 
+The raw handshake tests were designed to obtain the HTTP status returned when requesting a WebSocket upgrade, rather than relying solely on a browser's generic connection error or abnormal-close code.
 
+Both tests used:
 
-This difference is useful evidence for investigation, but it does not establish the cause of the Echo failure.
+- TLS to `ts.idicorp.ir` on port `443`.
+- HTTP method `GET`.
+- The endpoint path under investigation.
+- `Upgrade: websocket`.
+- `Connection: Upgrade`.
+- A newly generated `Sec-WebSocket-Key`.
+- `Sec-WebSocket-Version: 13`.
+- No `Origin` header.
 
+### 8.2 Echo request
 
+The test used the following PowerShell invocation:
 
-### Potential investigation areas
+```powershell
+@'
+const tls = require("node:tls");
+const crypto = require("node:crypto");
 
+const socket = tls.connect(443, "ts.idicorp.ir", () => {
+  const key = crypto.randomBytes(16).toString("base64");
 
+  socket.write(
+    "GET /ws/echo HTTP/1.1\r\n" +
+    "Host: ts.idicorp.ir\r\n" +
+    "Upgrade: websocket\r\n" +
+    "Connection: Upgrade\r\n" +
+    `Sec-WebSocket-Key: ${key}\r\n` +
+    "Sec-WebSocket-Version: 13\r\n" +
+    "\r\n"
+  );
+});
 
-The following are hypotheses to investigate, not confirmed causes:
+socket.setTimeout(8000);
 
+socket.on("data", (data) => {
+  console.log(data.toString("utf8"));
+  socket.end();
+});
 
+socket.on("timeout", () => {
+  console.log("TIMEOUT: no handshake response within 8 seconds");
+  socket.destroy();
+});
 
-- Echo service availability or server-side handshake handling.
+socket.on("error", (err) => {
+  console.log("TLS ERROR:", err.message);
+});
+'@ | node
+```
 
-- Reverse-proxy or WebSocket upgrade routing.
+### 8.3 Echo response
 
-- Origin restrictions or deployment configuration.
+Observed response:
 
-- Network path or browser environment.
+```text
+HTTP/1.1 403 Forbidden
+Server: nginx
+Content-Type: text/plain; charset=utf-8
+Content-Length: 0
+Connection: keep-alive
+```
 
-- Any undocumented endpoint requirements.
+The response also included common security headers, including HSTS and frame/content-type protection headers.
 
+The recorded server date was:
 
+```text
+Thu, 29 Oct 2026 16:03:52 GMT
+```
 
-### Current status
+### 8.4 Calculator request
 
+The same technique was used with the path changed to `/ws/calculator`:
 
+```powershell
+@'
+const tls = require("node:tls");
+const crypto = require("node:crypto");
 
-**Unresolved.**
+const socket = tls.connect(443, "ts.idicorp.ir", () => {
+  const key = crypto.randomBytes(16).toString("base64");
 
+  socket.write(
+    "GET /ws/calculator HTTP/1.1\r\n" +
+    "Host: ts.idicorp.ir\r\n" +
+    "Upgrade: websocket\r\n" +
+    "Connection: Upgrade\r\n" +
+    `Sec-WebSocket-Key: ${key}\r\n` +
+    "Sec-WebSocket-Version: 13\r\n\r\n"
+  );
+});
 
+socket.setTimeout(8000);
+socket.on("data", (data) => {
+  console.log(data.toString("utf8"));
+  socket.destroy();
+});
+socket.on("timeout", () => {
+  console.log("TIMEOUT");
+  socket.destroy();
+});
+socket.on("error", (err) => console.log("TLS ERROR:", err.message));
+'@ | node
+```
 
-The observed close code and failed handshake do not independently prove that the backend is defective. Further investigation using server logs and deployment configuration is required.
+### 8.5 Calculator response
 
+Observed response:
 
+```text
+HTTP/1.1 101 Switching Protocols
+Server: nginx
+Connection: upgrade
+Upgrade: websocket
+Sec-WebSocket-Accept: WyjtuyIiocCMOK3hZA6lSrKIEi0=
+```
 
-A corresponding issue should be filed in the original challenge repository. Add its URL here after the issue is created.
+The recorded server date was:
 
+```text
+Thu, 29 Oct 2026 16:05:24 GMT
+```
 
+### 8.6 Direct comparison
 
-## 6. Streaming Echo
+| Property | Echo | Calculator |
+|---|---|---|
+| Host | `ts.idicorp.ir` | `ts.idicorp.ir` |
+| Port | 443 over TLS | 443 over TLS |
+| Requested path | `/ws/echo` | `/ws/calculator` |
+| HTTP method | GET | GET |
+| WebSocket Upgrade headers | Present | Present |
+| `Origin` header | Absent | Absent |
+| Response server header | `nginx` | `nginx` |
+| HTTP status | `403 Forbidden` | `101 Switching Protocols` |
+| Upgrade accepted | No | Yes |
 
+The comparison provides direct evidence that the tested endpoints responded differently to equivalent raw handshake methods.
 
+It does not establish whether the difference originates in Nginx routing, an access-control rule, an upstream service, application middleware, or another endpoint-specific condition.
 
-**Status: Not confirmed by the available test record.**
+### 8.7 Protocol limitation
 
+The raw test manually sends an HTTP Upgrade request and prints the initial response. It is useful for determining the initial HTTP status.
 
+It is not a complete WebSocket protocol client: it does not validate `Sec-WebSocket-Accept`, maintain the upgraded connection, decode WebSocket frames, or exchange application messages.
 
-This report does not claim that the authenticated HTTP Streaming Echo endpoint passed or failed. Add a result only after running a test and recording the observed response.
+Consequently, the `101` result establishes that the Calculator handshake was accepted, but the raw test itself does not establish that the Calculator application protocol works after the upgrade. Likewise, the `403` result establishes rejection of the Echo handshake request, but does not identify the component or rule that made the rejection decision.
 
+## 9. Earlier HTTP Checks and Their Limitations
 
+Earlier investigation included these additional checks:
 
-## 7. Recommended Follow-up Tests
+### 9.1 Plain HTTP GET to the Echo path
 
+A normal HTTP GET to:
 
+```text
+https://ts.idicorp.ir/ws/echo
+```
 
-- Retest Echo and capture the browser console and Network/WebSocket handshake details.
+returned:
 
-- Verify whether the Echo server sends the documented ready message after a successful handshake.
+```text
+404 Not Found
+```
 
-- Test multiple Echo messages on one established connection.
+This was not a WebSocket Upgrade request. A normal HTTP GET is not equivalent to a WebSocket handshake, so this response does not establish that the WebSocket endpoint itself is unavailable.
 
-- Test Calculator arithmetic operations and invalid requests independently.
+### 9.2 Simulated `curl` Upgrade requests
 
-- Test relevant HTTP error cases and session-expiration behavior.
+Earlier simulated Upgrade requests using `curl` returned HTTP `403` with both of these Origin values:
 
-- Test the production build in a deployment-like environment.
+```text
+http://localhost:5173
+https://ts.idicorp.ir
+```
 
-- Record the exact environment and outcomes for any additional tests.
+Those requests were not full WebSocket-client tests. They provide supplementary evidence that the simulated requests were rejected, but should not be used alone to draw conclusions about browser Origin validation or WebSocket protocol behavior.
 
+### 9.3 Artificial CORS preflight
 
+An earlier artificial OPTIONS preflight using WebSocket-related headers returned a `400` response referring to disallowed CORS headers.
 
-## 8. Summary
+A WebSocket handshake is not equivalent to a standard browser CORS preflight. This artificial preflight does not establish that CORS is the cause of the Echo failure.
 
+### 9.4 Authenticated HTTP streaming endpoint
 
+An earlier unauthenticated request to:
 
-The production build succeeded, lint completed with two warnings, and the exercised authentication, task-management, and Calculator readiness scenarios were successful.
+```text
+POST https://ts.idicorp.ir/api/echo/stream
+```
 
+returned:
 
+```text
+401 Unauthorized
+```
 
-The direct browser test of the Text Echo WebSocket failed before connection establishment and remains unresolved. The root cause has not been confirmed.
+This is a separate HTTP streaming endpoint. Its authorization behavior cannot be treated as proof that the WebSocket endpoint `/ws/echo` requires the same authentication or fails for the same reason.
 
+These results are retained as context, but the direct Echo-versus-Calculator Upgrade comparison is the more relevant evidence for the current WebSocket investigation.
 
+## 10. Root-Cause Assessment
 
-This report records observed results rather than asserting that all requirements have been exhaustively tested.
+### 10.1 Confirmed observations
 
+The following conclusions are directly supported by the recorded tests:
 
+1. The Echo WebSocket failed to open in a browser test.
+2. A direct Node.js WebSocket test against Echo also failed.
+3. The raw Echo handshake received HTTP `403 Forbidden`.
+4. The raw Calculator handshake received HTTP `101 Switching Protocols`.
+5. Both raw requests targeted the same hostname and TLS port and used the same essential Upgrade headers.
+6. Neither raw handshake included an `Origin` header.
+7. The responses identified Nginx as the server.
+8. No successful Echo ready message or echoed text response was recorded.
+
+### 10.2 Most defensible interpretation
+
+The Echo failure is not explained solely by the React component, because it was reproduced with direct clients outside the interface.
+
+The raw handshake result narrows the observed failure to the point where the Echo upgrade request is rejected. The difference between Echo and Calculator makes an endpoint-specific routing, access, or backend-handling difference a reasonable area for further investigation.
+
+The response's `Server: nginx` header identifies the server software reported in the HTTP response. It does not prove that Nginx itself generated the rejection; a reverse proxy can also forward a response from an upstream application.
+
+### 10.3 Hypotheses that remain unconfirmed
+
+| Hypothesis | Why it is worth checking | Evidence still needed |
+|---|---|---|
+| Echo-specific Nginx location or proxy configuration | The two paths produce different handshake statuses | Effective Nginx configuration and access/error logs |
+| Endpoint-specific access policy | Echo returns `403` while Calculator upgrades successfully | Applicable authorization or access-control rules |
+| Upstream Echo service behavior | A proxy may forward a backend rejection | Upstream response logs and service health |
+| Different authentication requirements | Other service flows may use tokens | Explicit Echo authentication specification or server logs |
+| Routing or deployment mismatch | Endpoint paths may be routed differently | Route definitions and deployment configuration |
+| Network or client restrictions | Browser and Node tests can have different environments | Reproduction from another controlled client or network |
+
+These are investigation hypotheses, not established causes.
+
+### 10.4 Why the root cause cannot yet be declared
+
+The available client-side tests show the HTTP response and connection behavior, but do not reveal the server-side decision path.
+
+Without access to the relevant logs or configuration, it is not possible to determine whether the rejection is generated by Nginx, an upstream service, an access rule, or another layer.
+
+The technically accurate conclusion is therefore:
+
+**The Echo WebSocket handshake rejection has been reproduced and compared against a successful Calculator handshake. The exact root cause remains unconfirmed.**
+
+## 11. Frontend Implementation Considerations
+
+The Echo frontend should continue to handle connection failure safely and clearly.
+
+The current implementation should be reviewed to ensure that it:
+
+- Does not allow message submission unless the socket is open.
+- Displays connection and error states accurately.
+- Ignores events from obsolete sockets after reconnecting.
+- Cleans up the socket when the component unmounts.
+- Avoids displaying a successful connection state before the socket's `open` event or documented ready message.
+- Preserves both Persian and English translations.
+- Does not repeatedly reconnect in a tight loop when the server consistently rejects the handshake.
+
+Frontend changes cannot make a server-side `403` response succeed unless the request is missing a required, documented condition that the client is authorized to provide. No such condition has been established by the current evidence.
+
+## 12. Recommended Server-Side Follow-up
+
+The next diagnostic steps require cooperation from someone with access to the service configuration.
+
+1. Inspect the Nginx access log for requests to `/ws/echo` at the recorded test times.
+2. Inspect the corresponding Nginx error log and upstream status, if available.
+3. Compare the effective `/ws/echo` and `/ws/calculator` location and proxy configurations.
+4. Determine whether the `403` is generated by Nginx or returned by an upstream service.
+5. Verify the intended authentication and access policy for the Echo WebSocket.
+6. Confirm that the Echo upstream is healthy and mapped to the expected route.
+7. If the endpoint is expected to accept the recorded request, repeat the handshake test after any server-side correction.
+8. After a successful upgrade, verify the ready message and at least two Echo message exchanges.
+9. Record the test environment, timestamps, request conditions, status codes, and final outcome.
+
+These checks should be performed by an authorized maintainer. The present investigation does not assume access to production server logs or permission to alter server configuration.
+
+## 13. Final Verification Checklist
+
+The following checklist distinguishes completed diagnostic evidence from remaining work.
+
+| Check | Current status |
+|---|---|
+| Production build | Passed in final recorded run; see Section 4 |
+| Lint | Completed: 2 warnings, 0 errors; see Section 4 |
+| Login/CAPTCHA scenarios | Reported as tested successfully |
+| Task-management scenarios | Reported as tested successfully |
+| Calculator ready message | Recorded in prior authenticated test |
+| Direct browser Echo connection | Failed before open |
+| Direct Node.js Echo connection | Failed |
+| Raw Echo handshake | HTTP 403 observed |
+| Raw Calculator handshake | HTTP 101 observed |
+| Echo ready message | Not observed |
+| Echo message round-trip | Not verified |
+| Server-side root cause | Not confirmed |
+| Final post-investigation build/lint | Completed; see Section 4 |
+
+Build and lint statuses above reflect the final recorded runs described in Section 4. Other statuses distinguish previously recorded functional tests from checks that remain unverified.
+
+## 14. Conclusion
+
+The frontend production build was successful in the recorded run, and the available report documents successful execution of selected authentication, task-management, and Calculator readiness scenarios.
+
+The Echo WebSocket failure was reproduced outside the React interface and investigated with a raw TLS-based HTTP Upgrade request. The request to `/ws/echo` received `403 Forbidden`, while the comparable request to `/ws/calculator` received `101 Switching Protocols`.
+
+This comparison narrows the observed failure to the Echo handshake path or a condition specific to that request. It does not establish the exact root cause.
+
+The implementation report therefore records the failure transparently, avoids unsupported claims about backend responsibility, and identifies the server-side evidence needed to complete the investigation.
+
+The final recorded production build and lint results are documented in Section 4. The Echo server-side root cause remains unconfirmed and requires further investigation using server-side logs and configuration.
 
 ## Related Issue
 
-The Echo WebSocket connection issue has been reported in the original repository:
+The Echo WebSocket connection issue has been reported in the original challenge repository:
 
-- [Issue #8 — WebSocket Echo endpoint fails to establish a connection](https://github.com/mtrshirazi21/idicorp-frontend-challenge/issues/8)
+[Issue #8 â€” WebSocket Echo endpoint fails to establish a connection](https://github.com/mtrshirazi21/idicorp-frontend-challenge/issues/8)
