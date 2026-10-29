@@ -1,4 +1,4 @@
-﻿
+
 import { useCallback, useEffect, useState } from "react";
 
 import { useLanguage } from "../../i18n/useLanguage";
@@ -57,7 +57,7 @@ function TaskManager({ accessToken, onLogout }) {
  } catch (error) {
   if (error.status === 401 || error.status === 403) {
     setErrorMessage(
-      "Ù†Ø´Ø³Øª ÙˆØ±ÙˆØ¯ Ù…Ø¹ØªØ¨Ø± Ù†ÛŒØ³Øª. Ø¯ÙˆØ¨Ø§Ø±Ù‡ ÙˆØ§Ø±Ø¯ Ø­Ø³Ø§Ø¨ Ø´Ùˆ."
+      "نشست شما معتبر نیست یا منقضی شده است. دوباره وارد حساب خود شوید."
     );
   } else {
     setErrorMessage(t.taskLoadError);
@@ -251,7 +251,7 @@ function TaskManager({ accessToken, onLogout }) {
           type="button"
           onClick={openCreateForm}
         >
-          <span aria-hidden="true">ï¼‹</span>
+          <span aria-hidden="true">+</span>
           {t.addTask}
         </button>
       </div>
@@ -262,7 +262,7 @@ function TaskManager({ accessToken, onLogout }) {
             {t.searchTasks}
           </span>
 
-          <span aria-hidden="true">âŒ•</span>
+          <span aria-hidden="true">⌕</span>
 
           <input
             type="search"
@@ -305,7 +305,7 @@ function TaskManager({ accessToken, onLogout }) {
         <p className="task-manager__error" role="alert">
           {errorMessage}
           <button type="button" onClick={loadTasks}>
-            â†»
+            ↻
           </button>
         </p>
       )}
@@ -322,7 +322,7 @@ function TaskManager({ accessToken, onLogout }) {
               aria-label={t.cancel}
               disabled={saving}
             >
-              Ã—
+              ×
             </button>
           </div>
 
@@ -386,7 +386,7 @@ function TaskManager({ accessToken, onLogout }) {
               disabled={saving}
             >
               {saving
-                ? "â€¦"
+                ? "…"
                 : editingId !== null
                   ? t.saveChanges
                   : t.createTask}
@@ -413,7 +413,7 @@ function TaskManager({ accessToken, onLogout }) {
         ) : tasks.length === 0 ? (
           <div className="task-manager__empty">
             <span className="task-manager__empty-mark" aria-hidden="true">
-              âœ³
+              ✳
             </span>
             <p>
               {search.trim() || statusFilter !== "all"
@@ -449,7 +449,7 @@ function TaskManager({ accessToken, onLogout }) {
                 }
                 title={task.completed ? t.markPending : t.markDone}
               >
-                {task.completed ? "âœ“" : ""}
+                {task.completed ? "✓" : ""}
               </button>
 
               <div className="task-card__content">

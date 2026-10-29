@@ -1,4 +1,4 @@
-﻿
+
 import "./WelcomePanel.css";
 import { useLanguage } from "../../i18n/useLanguage";
 
@@ -29,7 +29,7 @@ function WelcomePanel() {
         </p>
 
         <div className="welcome-panel__note">
-          <span aria-hidden="true">âœ³</span>
+          <span aria-hidden="true">✳</span>
           {t.heroNote}
         </div>
       </div>
@@ -44,7 +44,7 @@ function WelcomePanel() {
           </span>
 
           <span className="welcome-panel__paper-symbol">
-            â†—
+            ↗
           </span>
 
           <span className="welcome-panel__paper-caption">
@@ -68,7 +68,7 @@ function WelcomePanel() {
         </div>
 
         <span className="welcome-panel__spark welcome-panel__spark--one">
-          âœ³
+          ✳
         </span>
 
         <span className="welcome-panel__spark welcome-panel__spark--two">

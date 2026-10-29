@@ -1,32 +1,31 @@
-﻿
-import { useState } from "react";
+﻿import { useState } from "react";
 import { useLanguage } from "../../i18n/useLanguage";
 import { calculate } from "../../services/calculatorSocket";
 import "./CalculatorPanel.css";
 
 const translations = {
   fa: {
-    eyebrow: "Ø§Ø¨Ø²Ø§Ø± Ù…Ø­Ø§Ø³Ø¨Ø§ØªÛŒ",
-    title: "Ù…Ø§Ø´ÛŒÙ†â€ŒØ­Ø³Ø§Ø¨ Ø²Ù†Ø¯Ù‡",
-    description: "Ù…Ø­Ø§Ø³Ø¨Ø§Øª Ø±Ø§ Ø§Ø² Ø·Ø±ÛŒÙ‚ Ø§ØªØµØ§Ù„ WebSocket Ø§Ù†Ø¬Ø§Ù… Ø¨Ø¯Ù‡.",
-    operation: "Ø¹Ù…Ù„ÛŒØ§Øª",
-    add: "Ø¬Ù…Ø¹",
-    subtract: "ØªÙØ±ÛŒÙ‚",
-    multiply: "Ø¶Ø±Ø¨",
-    divide: "ØªÙ‚Ø³ÛŒÙ…",
-    first: "Ø¹Ø¯Ø¯ Ø§ÙˆÙ„",
-    second: "Ø¹Ø¯Ø¯ Ø¯ÙˆÙ…",
-    calculate: "Ù…Ø­Ø§Ø³Ø¨Ù‡ Ú©Ù†",
-    result: "Ù†ØªÛŒØ¬Ù‡",
-    invalid: "Ù„Ø·ÙØ§Ù‹ Ø¯Ùˆ Ø¹Ø¯Ø¯ Ù…Ø¹ØªØ¨Ø± ÙˆØ§Ø±Ø¯ Ú©Ù†.",
-    divisionByZero: "ØªÙ‚Ø³ÛŒÙ… Ø¨Ø± ØµÙØ± Ù…Ø¬Ø§Ø² Ù†ÛŒØ³Øª.",
-    error: "Ù…Ø­Ø§Ø³Ø¨Ù‡ Ø§Ù†Ø¬Ø§Ù… Ù†Ø´Ø¯. Ø§ØªØµØ§Ù„ ÛŒØ§ Ù†Ø´Ø³Øª ÙˆØ±ÙˆØ¯ Ø±Ø§ Ø¨Ø±Ø±Ø³ÛŒ Ú©Ù†.",
-    loading: "Ø¯Ø± Ø­Ø§Ù„ Ù…Ø­Ø§Ø³Ø¨Ù‡...",
+    eyebrow: "ابزار محاسبات",
+    title: "ماشین‌حساب آنلاین",
+    description: "عملیات ریاضی را از طریق اتصال به سرویس محاسبات انجام دهید.",
+    operation: "عملیات ریاضی",
+    add: "جمع",
+    subtract: "تفریق",
+    multiply: "ضرب",
+    divide: "تقسیم",
+    first: "عدد اول",
+    second: "عدد دوم",
+    calculate: "محاسبه",
+    result: "نتیجه",
+    invalid: "لطفاً دو عدد معتبر وارد کنید.",
+    divisionByZero: "تقسیم بر صفر امکان‌پذیر نیست.",
+    error: "محاسبه انجام نشد. اتصال به سرویس را بررسی کنید.",
+    loading: "در حال محاسبه...",
   },
   en: {
     eyebrow: "CALCULATION TOOL",
-    title: "Live calculator",
-    description: "Calculate values over a WebSocket connection.",
+    title: "Calculator",
+    description: "Perform arithmetic operations through the calculation service.",
     operation: "Operation",
     add: "Add",
     subtract: "Subtract",
@@ -36,9 +35,9 @@ const translations = {
     second: "Second number",
     calculate: "Calculate",
     result: "Result",
-    invalid: "Enter two valid numbers.",
+    invalid: "Please enter two valid numbers.",
     divisionByZero: "Division by zero is not allowed.",
-    error: "Calculation failed. Check the connection or session.",
+    error: "Calculation failed. Check the service connection.",
     loading: "Calculating...",
   },
 };
@@ -92,7 +91,10 @@ export default function CalculatorPanel({ accessToken }) {
   }
 
   return (
-    <section className="calculator-panel" dir={language === "fa" ? "rtl" : "ltr"}>
+    <section
+      className="calculator-panel"
+      dir={language === "fa" ? "rtl" : "ltr"}
+    >
       <p className="calculator-panel__eyebrow">{t.eyebrow}</p>
       <h2>{t.title}</h2>
       <p className="calculator-panel__description">{t.description}</p>
@@ -155,4 +157,3 @@ export default function CalculatorPanel({ accessToken }) {
     </section>
   );
 }
-
