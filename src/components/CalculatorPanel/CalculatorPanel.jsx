@@ -1,13 +1,12 @@
 ﻿import { useState } from "react";
 import { useLanguage } from "../../i18n/useLanguage";
-import { calculate } from "../../services/calculatorSocket";
 import "./CalculatorPanel.css";
 
 const translations = {
   fa: {
     eyebrow: "ابزار محاسبات",
-    title: "ماشین‌حساب آنلاین",
-    description: "عملیات ریاضی را از طریق اتصال به سرویس محاسبات انجام دهید.",
+    title: "ماشین‌حساب",
+    description: "عملیات ریاضی را مستقیماً در مرورگر انجام دهید.",
     operation: "عملیات ریاضی",
     add: "جمع",
     subtract: "تفریق",
@@ -19,13 +18,12 @@ const translations = {
     result: "نتیجه",
     invalid: "لطفاً دو عدد معتبر وارد کنید.",
     divisionByZero: "تقسیم بر صفر امکان‌پذیر نیست.",
-    error: "محاسبه انجام نشد. اتصال به سرویس را بررسی کنید.",
-    loading: "در حال محاسبه...",
+    error: "نتیجه محاسبه قابل نمایش نیست.",
   },
   en: {
     eyebrow: "CALCULATION TOOL",
     title: "Calculator",
-    description: "Perform arithmetic operations through the calculation service.",
+    description: "Perform arithmetic operations directly in your browser.",
     operation: "Operation",
     add: "Add",
     subtract: "Subtract",
@@ -37,12 +35,11 @@ const translations = {
     result: "Result",
     invalid: "Please enter two valid numbers.",
     divisionByZero: "Division by zero is not allowed.",
-    error: "Calculation failed. Check the service connection.",
-    loading: "Calculating...",
+    error: "The calculation result cannot be displayed.",
   },
 };
 
-export default function CalculatorPanel({ accessToken }) {
+export default function CalculatorPanel() {
   const { language } = useLanguage();
   const t = translations[language] || translations.fa;
 
@@ -51,9 +48,8 @@ export default function CalculatorPanel({ accessToken }) {
   const [second, setSecond] = useState("20");
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
 
-  async function handleCalculate(event) {
+  function handleCalculate(event) {
     event.preventDefault();
     setError("");
     setResult(null);
@@ -78,16 +74,32 @@ export default function CalculatorPanel({ accessToken }) {
       return;
     }
 
-    setLoading(true);
+    let value;
 
-    try {
-      const value = await calculate(accessToken, operation, [a, b]);
-      setResult(value);
-    } catch (err) {
-      setError(err.message || t.error);
-    } finally {
-      setLoading(false);
+    switch (operation) {
+      case "add":
+        value = a + b;
+        break;
+      case "subtract":
+        value = a - b;
+        break;
+      case "multiply":
+        value = a * b;
+        break;
+      case "divide":
+        value = a / b;
+        break;
+      default:
+        setError(t.error);
+        return;
     }
+
+    if (!Number.isFinite(value)) {
+      setError(t.error);
+      return;
+    }
+
+    setResult(value);
   }
 
   return (
@@ -137,9 +149,7 @@ export default function CalculatorPanel({ accessToken }) {
           </label>
         </div>
 
-        <button type="submit" disabled={loading}>
-          {loading ? t.loading : t.calculate}
-        </button>
+        <button type="submit">{t.calculate}</button>
       </form>
 
       {error && (

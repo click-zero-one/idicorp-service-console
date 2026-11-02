@@ -1,16 +1,10 @@
-
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { useLanguage } from "../../i18n/useLanguage";
-import {
-  createTask,
-  deleteTask,
-  getTasks,
-  patchTask,
-  updateTask,
-} from "../../services/api";
 
 import "./TaskManager.css";
+
+const STORAGE_KEY = "idicorp-demo-tasks";
 
 const emptyForm = {
   title: "",
@@ -18,15 +12,32 @@ const emptyForm = {
   completed: false,
 };
 
-function TaskManager({ accessToken, onLogout }) {
-  const { t } = useLanguage();
+function loadSavedTasks() {
+  try {
+    const savedTasks = localStorage.getItem(STORAGE_KEY);
 
-  const [tasks, setTasks] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
-  const [notice, setNotice] = useState("");
+    if (!savedTasks) return [];
 
+    const parsedTasks = JSON.parse(savedTasks);
+
+    return Array.isArray(parsedTasks) ? parsedTasks : [];
+  } catch {
+    return [];
+  }
+}
+
+function createTaskId() {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+function TaskManager({ onLogout }) {
+  const { t, language } = useLanguage();
+
+  const [tasks, setTasks] = useState(loadSavedTasks);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
@@ -34,42 +45,15 @@ function TaskManager({ accessToken, onLogout }) {
   const [editingId, setEditingId] = useState(null);
   const [formError, setFormError] = useState("");
   const [formOpen, setFormOpen] = useState(false);
-
-  const loadTasks = useCallback(async () => {
-    setLoading(true);
-    setErrorMessage("");
-
-    try {
-      const filters = {
-        q: search,
-        completed:
-          statusFilter === "all"
-            ? ""
-            : statusFilter === "completed",
-      };
-
-      const result = await getTasks(accessToken, filters);
-      const taskList = Array.isArray(result)
-        ? result
-        : result?.tasks ?? result?.items ?? [];
-
-      setTasks(taskList);
- } catch (error) {
-  if (error.status === 401 || error.status === 403) {
-    setErrorMessage(
-      "نشست شما معتبر نیست یا منقضی شده است. دوباره وارد حساب خود شوید."
-    );
-  } else {
-    setErrorMessage(t.taskLoadError);
-  }
-} finally {
-      setLoading(false);
-    }
-  }, [accessToken, search, statusFilter, t.taskLoadError]);
+  const [notice, setNotice] = useState("");
 
   useEffect(() => {
-    loadTasks();
-  }, [loadTasks]);
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+    } catch {
+      // The demo continues to work if browser storage is unavailable.
+    }
+  }, [tasks]);
 
   function openCreateForm() {
     setForm({ ...emptyForm });
@@ -108,7 +92,7 @@ function TaskManager({ accessToken, onLogout }) {
     }));
   }
 
-  async function handleSubmit(event) {
+  function handleSubmit(event) {
     event.preventDefault();
 
     const title = form.title.trim();
@@ -129,81 +113,79 @@ function TaskManager({ accessToken, onLogout }) {
       return;
     }
 
-    setSaving(true);
-    setFormError("");
-    setNotice("");
-
     const taskData = {
       title,
       description,
       completed: form.completed,
     };
 
-    try {
-      if (editingId !== null) {
-        await updateTask(accessToken, editingId, taskData);
-        setNotice(t.taskUpdated);
-      } else {
-        await createTask(accessToken, taskData);
-        setNotice(t.taskCreated);
-      }
-
-      closeForm();
-      await loadTasks();
-    } catch {
-      setFormError(t.taskSaveError);
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function handleToggleCompleted(task) {
-    setNotice("");
-    setErrorMessage("");
-
-    try {
-      await patchTask(accessToken, task.id, {
-        completed: !task.completed,
-      });
-
+    if (editingId !== null) {
       setTasks((current) =>
-        current.map((item) =>
-          item.id === task.id
-            ? { ...item, completed: !item.completed }
-            : item
+        current.map((task) =>
+          task.id === editingId
+            ? { ...task, ...taskData }
+            : task
         )
       );
 
-      setNotice(
-        !task.completed ? t.taskUpdated : t.taskUpdated
-      );
-    } catch {
-      setErrorMessage(t.taskSaveError);
+      setNotice(t.taskUpdated);
+    } else {
+      setTasks((current) => [
+        {
+          id: createTaskId(),
+          ...taskData,
+        },
+        ...current,
+      ]);
+
+      setNotice(t.taskCreated);
     }
+
+    closeForm();
   }
 
-  async function handleDelete(task) {
+  function handleToggleCompleted(task) {
+    setTasks((current) =>
+      current.map((item) =>
+        item.id === task.id
+          ? { ...item, completed: !item.completed }
+          : item
+      )
+    );
+
+    setNotice(t.taskUpdated);
+  }
+
+  function handleDelete(task) {
     const confirmed = window.confirm(t.confirmDelete);
 
-    if (!confirmed) {
-      return;
-    }
+    if (!confirmed) return;
 
-    setNotice("");
-    setErrorMessage("");
+    setTasks((current) =>
+      current.filter((item) => item.id !== task.id)
+    );
 
-    try {
-      await deleteTask(accessToken, task.id);
-
-      setTasks((current) =>
-        current.filter((item) => item.id !== task.id)
-      );
-
-      setNotice(t.taskDeleted);
-    } catch {
-      setErrorMessage(t.taskDeleteError);
-    }
+    setNotice(t.taskDeleted);
   }
+
+  const normalizedSearch = search.trim().toLocaleLowerCase(
+    language === "fa" ? "fa" : "en"
+  );
+
+  const visibleTasks = tasks.filter((task) => {
+    const matchesSearch =
+      !normalizedSearch ||
+      `${task.title} ${task.description}`
+        .toLocaleLowerCase(language === "fa" ? "fa" : "en")
+        .includes(normalizedSearch);
+
+    const matchesStatus =
+      statusFilter === "all" ||
+      (statusFilter === "completed" && task.completed) ||
+      (statusFilter === "pending" && !task.completed);
+
+    return matchesSearch && matchesStatus;
+  });
 
   const completedCount = tasks.filter(
     (task) => task.completed
@@ -301,15 +283,6 @@ function TaskManager({ accessToken, onLogout }) {
         </p>
       )}
 
-      {errorMessage && (
-        <p className="task-manager__error" role="alert">
-          {errorMessage}
-          <button type="button" onClick={loadTasks}>
-            ↻
-          </button>
-        </p>
-      )}
-
       {formOpen && (
         <form className="task-form" onSubmit={handleSubmit}>
           <div className="task-form__heading">
@@ -320,7 +293,6 @@ function TaskManager({ accessToken, onLogout }) {
               type="button"
               onClick={closeForm}
               aria-label={t.cancel}
-              disabled={saving}
             >
               ×
             </button>
@@ -336,7 +308,6 @@ function TaskManager({ accessToken, onLogout }) {
               placeholder={t.taskTitlePlaceholder}
               maxLength={120}
               required
-              disabled={saving}
             />
             <span className="task-form__counter">
               {form.title.length}/120
@@ -355,7 +326,6 @@ function TaskManager({ accessToken, onLogout }) {
               placeholder={t.taskDescriptionPlaceholder}
               maxLength={2000}
               rows={3}
-              disabled={saving}
             />
             <span className="task-form__counter">
               {form.description.length}/2000
@@ -368,7 +338,6 @@ function TaskManager({ accessToken, onLogout }) {
               name="completed"
               checked={form.completed}
               onChange={handleFormChange}
-              disabled={saving}
             />
             {t.markCompleted}
           </label>
@@ -380,23 +349,14 @@ function TaskManager({ accessToken, onLogout }) {
           )}
 
           <div className="task-form__actions">
-            <button
-              className="task-form__save"
-              type="submit"
-              disabled={saving}
-            >
-              {saving
-                ? "…"
-                : editingId !== null
-                  ? t.saveChanges
-                  : t.createTask}
+            <button className="task-form__save" type="submit">
+              {editingId !== null ? t.saveChanges : t.createTask}
             </button>
 
             <button
               className="task-form__cancel"
               type="button"
               onClick={closeForm}
-              disabled={saving}
             >
               {t.cancel}
             </button>
@@ -405,21 +365,18 @@ function TaskManager({ accessToken, onLogout }) {
       )}
 
       <div className="task-manager__list" aria-live="polite">
-        {loading ? (
-          <div className="task-manager__empty">
-            <span className="task-manager__loader" aria-hidden="true" />
-            <p>{t.loadingTasks}</p>
-          </div>
-        ) : tasks.length === 0 ? (
+        {visibleTasks.length === 0 ? (
           <div className="task-manager__empty">
             <span className="task-manager__empty-mark" aria-hidden="true">
               ✳
             </span>
+
             <p>
               {search.trim() || statusFilter !== "all"
                 ? t.noSearchResults
                 : t.emptyTasks}
             </p>
+
             {!search.trim() && statusFilter === "all" && (
               <button type="button" onClick={openCreateForm}>
                 {t.addTask}
@@ -427,7 +384,7 @@ function TaskManager({ accessToken, onLogout }) {
             )}
           </div>
         ) : (
-          tasks.map((task, index) => (
+          visibleTasks.map((task, index) => (
             <article
               className={
                 task.completed
@@ -501,4 +458,3 @@ function TaskManager({ accessToken, onLogout }) {
 }
 
 export default TaskManager;
-

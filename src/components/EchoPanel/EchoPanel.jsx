@@ -1,43 +1,41 @@
-﻿
-import { useEffect, useRef, useState } from "react";
+﻿import { useState } from "react";
 import { useLanguage } from "../../i18n/useLanguage";
-import { createEchoSocket } from "../../services/echoSocket";
 import "./EchoPanel.css";
 
 const translations = {
   fa: {
-    eyebrow: "ارتباط زنده",
+    eyebrow: "حالت نمایشی",
     title: "آزمایش Echo",
-    description: "پیامت را ارسال کن و پاسخ سرویس را دریافت کن.",
-    connect: "اتصال مجدد",
-    connected: "متصل",
-    connecting: "در حال اتصال",
-    disconnected: "قطع اتصال",
-    closed: "اتصال بسته شد",
+    description: "پیامت را ارسال کن و پاسخ شبیه‌سازی‌شده را در همین مرورگر ببین.",
+    connect: "شروع مجدد",
+    connected: "آماده",
+    connecting: "در حال آماده‌سازی",
+    disconnected: "غیرفعال",
+    closed: "بسته شد",
     message: "پیام",
     placeholder: "یک پیام بنویس...",
     send: "ارسال پیام",
-    sent: "ارسال شد",
-    received: "دریافت شد",
+    sent: "ارسال‌شده",
+    received: "پاسخ نمایشی",
     empty: "هنوز پیامی ردوبدل نشده است.",
-    connectionError: "اتصال به سرویس Echo ناموفق بود.",
+    connectionError: "امکان پردازش پیام وجود ندارد.",
   },
   en: {
-    eyebrow: "LIVE CONNECTION",
+    eyebrow: "DEMO MODE",
     title: "Echo playground",
-    description: "Send a message and receive the server response.",
-    connect: "Reconnect",
-    connected: "Connected",
-    connecting: "Connecting",
-    disconnected: "Disconnected",
-    closed: "Connection closed",
+    description: "Send a message and see a simulated response in your browser.",
+    connect: "Reset demo",
+    connected: "Ready",
+    connecting: "Preparing",
+    disconnected: "Inactive",
+    closed: "Closed",
     message: "Message",
     placeholder: "Write a message...",
     send: "Send message",
     sent: "Sent",
-    received: "Received",
+    received: "Demo response",
     empty: "No messages exchanged yet.",
-    connectionError: "Could not connect to Echo.",
+    connectionError: "The message could not be processed.",
   },
 };
 
@@ -45,103 +43,35 @@ export default function EchoPanel() {
   const { language } = useLanguage();
   const t = translations[language] || translations.fa;
 
-  const socketRef = useRef(null);
-  const [status, setStatus] = useState("connecting");
+  const [status, setStatus] = useState("connected");
   const [message, setMessage] = useState("");
   const [history, setHistory] = useState([]);
   const [error, setError] = useState("");
 
-
-function connect() {
-  setError("");
-  setStatus("connecting");
-
-  if (socketRef.current) {
-    socketRef.current.reconnect();
+  function connect() {
+    setError("");
+    setStatus("connected");
   }
-}
-
-
-useEffect(() => {
-  let active = true;
-
-  const socket = createEchoSocket({
-    onOpen: () => {
-      if (!active) return;
-
-      setStatus("connected");
-      setError("");
-    },
-
-    onMessage: (rawMessage) => {
-      if (!active) return;
-
-      let displayText = rawMessage;
-
-      try {
-        const data = JSON.parse(rawMessage);
-
-        if (data?.type === "ready") {
-          setStatus("connected");
-          return;
-        }
-
-        if (typeof data?.text === "string") {
-          displayText = data.text;
-        }
-      } catch {
-        // پیام متنی معمولی است.
-      }
-
-      setHistory((previous) => [
-        ...previous,
-        {
-          id: `${Date.now()}-${Math.random()}`,
-          direction: "received",
-          text: displayText,
-        },
-      ]);
-    },
-
-    onError: (errorMessage) => {
-      if (!active) return;
-
-      setStatus("error");
-      setError(errorMessage || t.connectionError);
-    },
-
-    onClose: (info) => {
-      if (!active) return;
-
-      setStatus("disconnected");
-      console.info("Echo socket closed:", info);
-    },
-  });
-
-  socketRef.current = socket;
-
-  return () => {
-    active = false;
-    socket.close();
-    socketRef.current = null;
-  };
-}, [t.connectionError]);
 
   function handleSend(event) {
     event.preventDefault();
 
-    if (!message.trim()) return;
+    const sentMessage = message.trim();
 
-    const sentMessage = message;
-    const sent = socketRef.current?.send(sentMessage);
+    if (!sentMessage || status !== "connected") return;
 
-    if (!sent) return;
+    const timestamp = Date.now();
 
     setHistory((previous) => [
       ...previous,
       {
-        id: `${Date.now()}-${Math.random()}`,
+        id: `${timestamp}-sent`,
         direction: "sent",
+        text: sentMessage,
+      },
+      {
+        id: `${timestamp}-received`,
+        direction: "received",
         text: sentMessage,
       },
     ]);
@@ -156,7 +86,7 @@ useEffect(() => {
     disconnected: t.disconnected,
     closed: t.closed,
     error: t.connectionError,
-  }[status] || t.connecting;
+  }[status] || t.connected;
 
   return (
     <section
@@ -231,4 +161,3 @@ useEffect(() => {
     </section>
   );
 }
-
