@@ -1,4 +1,4 @@
-﻿
+
 import "./ConsoleHeader.css";
 import { useLanguage } from "../../i18n/useLanguage";
 
@@ -43,10 +43,10 @@ function ConsoleHeader() {
           aria-label={
             language === "fa"
               ? "Switch language to English"
-              : "ØªØºÛŒÛŒØ± Ø²Ø¨Ø§Ù† Ø¨Ù‡ ÙØ§Ø±Ø³ÛŒ"
+              : "Switch language to Persian"
           }
         >
-          {language === "fa" ? "English" : "ÙØ§Ø±Ø³ÛŒ"}
+          {language === "fa" ? "English" : "فارسی"}
         </button>
       </div>
     </header>
